@@ -12,9 +12,11 @@ import android.media.AudioAttributes;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.NotificationManagerCompat;
 import android.util.Log;
+import android.view.WindowManager;
 
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -34,6 +36,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import me.leolin.shortcutbadger.ShortcutBadger;
 
@@ -47,6 +50,11 @@ public class PushPlugin extends CordovaPlugin implements PushConstants {
   private static boolean gForeground = false;
 
   private static String registration_id = "";
+
+
+  protected static Activity cordovaActivity = null;
+  protected static Context cordovaContext = null;
+
 
   /**
    * Gets the application context from cordova's main activity.
@@ -474,9 +482,60 @@ public class PushPlugin extends CordovaPlugin implements PushConstants {
         Log.v(LOG_TAG, "sendExtras: caching extras to send at a later time.");
         gCachedExtras.add(extras);
       }
+	  
+	  // Wake device for any notification.
+	  // FUTURE: Only wake if the payload contains a specific attribute.
+      wakeDevice();
     }
   }
-
+  
+  
+  
+  
+  
+  
+  //region ------ wakeDevice ------
+  
+  public static void wakeDevice() {
+    turnScreenOnThroughKeyguard(cordovaActivity);
+  }
+  
+  /**
+   * Attempt a few methods of waking the screen!
+   * https://stackoverflow.com/a/52403450
+   */
+  public static void turnScreenOnThroughKeyguard(Activity activity) {
+    userPowerManagerWakeup(activity);
+    //useWindowFlags(activity);	// Needs exception handling
+    useActivityScreenMethods(activity);
+  }
+  
+  private static void useActivityScreenMethods(Activity activity) {
+    activity.setTurnScreenOn(true);
+    activity.setShowWhenLocked(true);
+  }
+  
+  private static void useWindowFlags(Activity activity) {
+    activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+            | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+            | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+            | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+  }
+  
+  private static void userPowerManagerWakeup(Activity activity) {
+    PowerManager pm = (PowerManager) activity.getApplicationContext().getSystemService(Context.POWER_SERVICE);
+    PowerManager.WakeLock wakeLock = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP, "myapp:taggy");
+    wakeLock.acquire(TimeUnit.SECONDS.toMillis(5));
+  }
+  
+  
+  //endregion ------ wakeDevice ------
+  
+  
+  
+  
+  
+  
   /*
    * Retrives badge count from SharedPreferences
    */
@@ -504,6 +563,9 @@ public class PushPlugin extends CordovaPlugin implements PushConstants {
   public void initialize(CordovaInterface cordova, CordovaWebView webView) {
     super.initialize(cordova, webView);
     gForeground = true;
+
+    PushPlugin.cordovaActivity = super.cordova.getActivity();
+    PushPlugin.cordovaContext = super.cordova.getActivity().getApplicationContext();
   }
 
   @Override
