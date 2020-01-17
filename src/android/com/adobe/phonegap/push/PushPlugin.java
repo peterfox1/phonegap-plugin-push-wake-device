@@ -525,7 +525,7 @@ public class PushPlugin extends CordovaPlugin implements PushConstants {
   private static void userPowerManagerWakeup(Activity activity) {
     PowerManager pm = (PowerManager) activity.getApplicationContext().getSystemService(Context.POWER_SERVICE);
     PowerManager.WakeLock wakeLock = pm.newWakeLock(PowerManager.FULL_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP, "myapp:taggy");
-    wakeLock.acquire(TimeUnit.SECONDS.toMillis(5));
+    wakeLock.acquire(TimeUnit.SECONDS.toMillis(120));
   }
   
   
